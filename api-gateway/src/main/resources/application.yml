@@ -1,0 +1,50 @@
+server:
+  port: ${SERVER_PORT:8080}
+
+spring:
+  application:
+    name: api-gateway
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Spring reads <issuer>/.well-known/openid-configuration to find the public keys (jwks_uri),
+          # then checks the signature, the expiry and that the "iss" claim equals this value.
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ecommerce}
+  cloud:
+    gateway:
+      server:
+        webmvc:
+          routes:
+            - id: product-service
+              uri: ${PRODUCT_SERVICE_URL:http://127.0.0.1:8083}
+              predicates:
+                - Path=/api/products/**
+            - id: cart-service
+              uri: ${CART_SERVICE_URL:http://127.0.0.1:8082}
+              predicates:
+                - Path=/api/carts/**
+            - id: order-service
+              uri: ${ORDER_SERVICE_URL:http://127.0.0.1:8081}
+              predicates:
+                - Path=/api/orders/**
+            - id: inventory-service
+              uri: ${INVENTORY_SERVICE_URL:http://127.0.0.1:8084}
+              predicates:
+                - Path=/api/inventory/**
+            - id: customer-service
+              uri: ${CUSTOMER_SERVICE_URL:http://127.0.0.1:8085}
+              predicates:
+                - Path=/api/customers/**
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL:http://127.0.0.1:8086}
+              predicates:
+                - Path=/api/notifications/**
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+logging:
+  level:
+    org.springframework.security: INFO

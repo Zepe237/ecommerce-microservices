@@ -1,0 +1,82 @@
+{
+  "realm": "ecommerce",
+  "displayName": "E-commerce",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": true,
+  "registrationEmailAsUsername": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      { "name": "CUSTOMER", "description": "Can browse the catalog, manage their cart and place orders" },
+      { "name": "ADMIN", "description": "Can manage the catalog, the stock and the customers" }
+    ]
+  },
+  "defaultRole": {
+    "name": "default-roles-ecommerce",
+    "composite": true,
+    "composites": {
+      "realm": ["offline_access", "uma_authorization", "CUSTOMER"]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "ecommerce-frontend",
+      "name": "E-commerce web application",
+      "description": "Browser application. Authorization Code flow with PKCE, no client secret.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:3000/*", "http://localhost:5173/*"],
+      "webOrigins": ["+"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*##http://localhost:5173/*"
+      }
+    },
+    {
+      "clientId": "ecommerce-dev-cli",
+      "name": "Development client for curl and Postman",
+      "description": "Local testing only: allows the password grant. Never enable this client in production.",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "implicitFlowEnabled": false,
+      "serviceAccountsEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "jane.doe@example.com",
+      "email": "jane.doe@example.com",
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["default-roles-ecommerce"]
+    },
+    {
+      "username": "admin@example.com",
+      "email": "admin@example.com",
+      "firstName": "Platform",
+      "lastName": "Admin",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [{ "type": "password", "value": "password", "temporary": false }],
+      "realmRoles": ["default-roles-ecommerce", "ADMIN"]
+    }
+  ]
+}

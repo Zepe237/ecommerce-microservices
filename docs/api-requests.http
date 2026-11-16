@@ -1,0 +1,113 @@
+### 0. Obtain an access token from Keycloak (development client, password grant)
+POST http://localhost:8180/realms/ecommerce/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-dev-cli&username=jane.doe@example.com&password=password
+
+> {% client.global.set("token", response.body.access_token); %}
+
+### 0b. Through the gateway: no token -> 401
+GET http://localhost:8080/api/carts/1
+
+### 0c. Through the gateway with the token -> 200
+GET http://localhost:8080/api/carts/1
+Authorization: Bearer {{token}}
+
+### 0d. Customer list is reserved to ADMIN -> 403 for Jane
+GET http://localhost:8080/api/customers
+Authorization: Bearer {{token}}
+
+### 0e. Obtain an access token for the admin user
+POST http://localhost:8180/realms/ecommerce/protocol/openid-connect/token
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=password&client_id=ecommerce-dev-cli&username=admin@example.com&password=password
+
+> {% client.global.set("adminToken", response.body.access_token); %}
+
+### 0f. Customer list with the admin token -> 200
+GET http://localhost:8080/api/customers
+Authorization: Bearer {{adminToken}}
+
+### 0g. Internal endpoint, blocked at the gateway even for ADMIN -> 403
+POST http://localhost:8080/api/inventory/availability
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+[{"productId": "PRD-0001", "quantity": 1}]
+
+### End-to-end scenario, runnable from the IntelliJ HTTP client.
+### Prerequisites: docker compose up -d, then the six services started with the "dev" profile (default).
+
+### 1. Browse the catalog (seeded with PRD-0001 ... PRD-0005)
+GET http://localhost:8083/api/products
+
+### 2. Check the stock of a product
+GET http://localhost:8084/api/inventory/PRD-0001
+
+### 3. Create a customer
+POST http://localhost:8085/api/customers
+Content-Type: application/json
+
+{
+  "name": "Jane Doe",
+  "email": "jane.doe@example.com"
+}
+
+### 4. Add products to the cart of customer 1
+POST http://localhost:8082/api/carts/1/items
+Content-Type: application/json
+
+{
+  "productId": "PRD-0001",
+  "quantity": 2
+}
+
+### 5. Add a second product
+POST http://localhost:8082/api/carts/1/items
+Content-Type: application/json
+
+{
+  "productId": "PRD-0004",
+  "quantity": 1
+}
+
+### 6. Review the cart
+GET http://localhost:8082/api/carts/1
+
+### 7. Place the order
+POST http://localhost:8081/api/orders
+Content-Type: application/json
+
+{
+  "customerId": 1
+}
+
+### 8. Order history of the customer
+GET http://localhost:8081/api/orders?customerId=1
+
+### 9. The cart has been emptied by the order.created event
+GET http://localhost:8082/api/carts/1
+
+### 10. Stock has been deducted (25 - 2 = 23)
+GET http://localhost:8084/api/inventory/PRD-0001
+
+### 11. Notifications sent (the e-mail itself is visible at http://localhost:8025)
+GET http://localhost:8086/api/notifications?customerId=1
+
+### 12. Out-of-stock scenario: expect 409 with unavailableProductIds
+POST http://localhost:8082/api/carts/1/items
+Content-Type: application/json
+
+{
+  "productId": "PRD-0003",
+  "quantity": 50
+}
+
+###
+POST http://localhost:8081/api/orders
+Content-Type: application/json
+
+{
+  "customerId": 1
+}

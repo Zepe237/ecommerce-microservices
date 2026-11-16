@@ -1,0 +1,32 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: cart-service
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9092}
+    consumer:
+      group-id: cart-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.feusap.ecommerce.cart.messaging.OrderCreatedEvent
+  mvc:
+    problemdetails:
+      enabled: true
+
+app:
+  clients:
+    product-service:
+      url: ${PRODUCT_SERVICE_URL:http://127.0.0.1:8083}
+  kafka:
+    topics:
+      order-created: order.created
