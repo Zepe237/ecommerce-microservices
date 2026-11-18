@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class PaymentController {
     private final PaymentService paymentService;
     @Operation(
-        summary = "create payment",
+        summary = "Pay an order",
         description = "create a payment"
     )
 
