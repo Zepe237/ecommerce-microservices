@@ -1,4 +1,4 @@
-package com.feusap.ecommerce.payment_service.provider.exception;
+package com.feusap.ecommerce.payment_service.exception;
 
 public class PaymentProviderUnavailableException extends RuntimeException {
 

@@ -7,12 +7,14 @@ import com.feusap.ecommerce.payment_service.domain.PaymentStatus;
 import com.feusap.ecommerce.payment_service.dto.PaymentRequest;
 import com.feusap.ecommerce.payment_service.dto.PaymentResponse;
 import com.feusap.ecommerce.payment_service.exception.OrderNotPayableException;
+import com.feusap.ecommerce.payment_service.exception.PaymentAlreadyInProgressException;
 import com.feusap.ecommerce.payment_service.messaging.PaymentCompletedEvent;
 import com.feusap.ecommerce.payment_service.messaging.PaymentEventPublisher;
 import com.feusap.ecommerce.payment_service.provider.PaymentProvider;
 import com.feusap.ecommerce.payment_service.provider.PaymentResult;
 import com.feusap.ecommerce.payment_service.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -41,12 +43,18 @@ public class PaymentService {
         }
 
         // 3. Trace PENDING enregistrée AVANT l'appel externe
-        Payment payment = existing.orElseGet(() -> paymentRepository.save(Payment.builder()
-            .orderId(order.id())
-            .customerId(order.customerId())
-            .amount(order.totalAmount())
-            .currency("cad")
-            .build()));
+        Payment payment = existing.orElseGet(() -> {
+            try {
+                return paymentRepository.saveAndFlush(Payment.builder()
+                    .orderId(order.id())
+                    .customerId(order.customerId())
+                    .amount(order.totalAmount())
+                    .currency("cad")
+                    .build());
+            } catch (DataIntegrityViolationException e) {
+                throw new PaymentAlreadyInProgressException(order.id());
+            }
+        });
 
         // 4. Appel au prestataire (Stripe ou faux prestataire)
         PaymentResult result = paymentProvider.charge(payment, request.paymentMethod());

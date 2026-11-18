@@ -7,11 +7,12 @@ import com.feusap.ecommerce.payment_service.domain.PaymentStatus;
 import com.feusap.ecommerce.payment_service.dto.PaymentRequest;
 import com.feusap.ecommerce.payment_service.dto.PaymentResponse;
 import com.feusap.ecommerce.payment_service.exception.OrderNotPayableException;
+import com.feusap.ecommerce.payment_service.exception.PaymentAlreadyInProgressException;
 import com.feusap.ecommerce.payment_service.messaging.PaymentCompletedEvent;
 import com.feusap.ecommerce.payment_service.messaging.PaymentEventPublisher;
 import com.feusap.ecommerce.payment_service.provider.PaymentProvider;
 import com.feusap.ecommerce.payment_service.provider.PaymentResult;
-import com.feusap.ecommerce.payment_service.provider.exception.PaymentProviderUnavailableException;
+import com.feusap.ecommerce.payment_service.exception.PaymentProviderUnavailableException;
 import com.feusap.ecommerce.payment_service.repository.PaymentRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,6 +22,7 @@ import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -123,6 +125,7 @@ class PaymentServiceTest {
                 .isInstanceOf(OrderNotPayableException.class)
                 .hasMessageContaining("CANCELLED");
 
+        verify(paymentRepository, never()).saveAndFlush(any());
         verify(paymentRepository, never()).save(any());
         verifyNoInteractions(paymentProvider, paymentEventPublisher);
     }
@@ -132,7 +135,7 @@ class PaymentServiceTest {
     void providerOutage() {
         givenNoExistingPayment();
         givenOrder("CONFIRMED", "99.99");
-        givenSaveReturnsItsArgument();
+        when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paymentProvider.charge(any(Payment.class), anyString()))
                 .thenThrow(new PaymentProviderUnavailableException("down"));
 
@@ -141,8 +144,9 @@ class PaymentServiceTest {
 
         verifyNoInteractions(paymentEventPublisher);
         ArgumentCaptor<Payment> saved = ArgumentCaptor.forClass(Payment.class);
-        verify(paymentRepository).save(saved.capture());
+        verify(paymentRepository).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getStatus()).isNotIn(PaymentStatus.SUCCEEDED, PaymentStatus.FAILED);
+        verify(paymentRepository, never()).save(any());
     }
 
     @Test
@@ -159,7 +163,7 @@ class PaymentServiceTest {
                 .build();
         when(paymentRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(failed));
         givenOrder("CONFIRMED", "99.99");
-        givenSaveReturnsItsArgument();
+        when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paymentProvider.charge(any(Payment.class), anyString())).thenReturn(PaymentResult.accepted("fake_456"));
 
         PaymentResponse response = paymentService.placePayment(new PaymentRequest(ORDER_ID, "pm_card_visa"));
@@ -167,6 +171,7 @@ class PaymentServiceTest {
         assertThat(response.id()).isEqualTo(10L);
         assertThat(response.status()).isEqualTo(PaymentStatus.SUCCEEDED);
         verify(paymentRepository).save(failed);
+        verify(paymentRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -185,6 +190,21 @@ class PaymentServiceTest {
         order.verify(paymentEventPublisher).publish(any(PaymentCompletedEvent.class));
     }
 
+    @Test
+    @DisplayName("A concurrent payment for the same order is refused with PaymentAlreadyInProgressException")
+    void concurrentPaymentForSameOrder() {
+        givenNoExistingPayment();
+        givenOrder("CONFIRMED", "99.99");
+        when(paymentRepository.saveAndFlush(any(Payment.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
+
+        assertThatThrownBy(() -> paymentService.placePayment(new PaymentRequest(ORDER_ID, "pm_card_visa")))
+                .isInstanceOf(PaymentAlreadyInProgressException.class)
+                .hasMessageContaining(String.valueOf(ORDER_ID));
+
+        verifyNoInteractions(paymentProvider, paymentEventPublisher);
+    }
+
     private void givenNoExistingPayment() {
         when(paymentRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.empty());
     }
@@ -195,6 +215,7 @@ class PaymentServiceTest {
     }
 
     private void givenSaveReturnsItsArgument() {
+        when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
