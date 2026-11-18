@@ -8,7 +8,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 import java.util.List;
 
-@FeignClient(name = "inventory-service", url = "${app.clients.inventory-service.url}")
+@FeignClient(
+    name = "inventory-service",
+    url = "${app.clients.inventory-service.url}",
+    fallbackFactory = InventoryClientFallbackFactory.class
+)
 public interface InventoryClient {
 
     @PostMapping("/api/inventory/availability")
