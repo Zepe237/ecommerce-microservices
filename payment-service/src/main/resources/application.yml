@@ -1,0 +1,74 @@
+server:
+  port: ${SERVER_PORT:8087}
+
+spring:
+  application:
+    name: payment-service
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:127.0.0.1}:${DB_PORT:5436}/ecom_payment_db
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:password}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:127.0.0.1:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
+      properties:
+        spring.json.add.type.headers: false
+  mvc:
+    problemdetails:
+      enabled: true
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
+      client:
+        config:
+          default:
+            connect-timeout: 2000
+            read-timeout: 3000
+
+app:
+  clients:
+    order-service:
+      url: ${ORDER_SERVICE_URL:http://127.0.0.1:8081}
+  stripe:
+    secret-key: ${STRIPE_SECRET_KEY:}
+  kafka:
+    topics:
+      payment-completed: payment.completed
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+        ignore-exceptions:
+          - feign.FeignException$FeignClientException
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 4s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true

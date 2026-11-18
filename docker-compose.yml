@@ -82,7 +82,23 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-password}
     volumes:
       - mongodata-notification:/data/db
-
+  postgres-payment:
+    image: postgres:17
+    container_name: ecommerce-postgres-payment
+    restart: unless-stopped
+    ports:
+      - "5436:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-root}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: ecom_payment_db
+    volumes:
+      - pgdata-payment:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d ecom_payment_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
   redis-cart:
     image: redis:7
     container_name: ecommerce-redis-cart
@@ -156,3 +172,4 @@ volumes:
   mongodata-notification:
   redisdata-cart:
   pgdata-keycloak:
+  pgdata-payment:
