@@ -1,7 +1,7 @@
 package com.feusap.ecommerce.payment_service.provider;
 
 import com.feusap.ecommerce.payment_service.domain.Payment;
-import com.feusap.ecommerce.payment_service.provider.exception.PaymentProviderUnavailableException;
+import com.feusap.ecommerce.payment_service.exception.PaymentProviderUnavailableException;
 import com.stripe.StripeClient;
 import com.stripe.exception.CardException;
 import com.stripe.exception.StripeException;
