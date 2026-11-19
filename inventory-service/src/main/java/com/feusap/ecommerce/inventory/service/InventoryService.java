@@ -2,20 +2,26 @@ package com.feusap.ecommerce.inventory.service;
 
 import com.feusap.ecommerce.inventory.domain.InventoryItem;
 import com.feusap.ecommerce.inventory.domain.ProcessedOrder;
+import com.feusap.ecommerce.inventory.domain.ReservationStatus;
+import com.feusap.ecommerce.inventory.domain.StockReservation;
 import com.feusap.ecommerce.inventory.dto.AvailabilityResponse;
 import com.feusap.ecommerce.inventory.dto.StockItemRequest;
 import com.feusap.ecommerce.inventory.dto.StockLevelResponse;
+import com.feusap.ecommerce.inventory.exception.InsufficientStockException;
 import com.feusap.ecommerce.inventory.exception.InventoryItemNotFoundException;
 import com.feusap.ecommerce.inventory.messaging.OrderCreatedEvent;
 import com.feusap.ecommerce.inventory.repository.InventoryItemRepository;
 import com.feusap.ecommerce.inventory.repository.ProcessedOrderRepository;
+import com.feusap.ecommerce.inventory.repository.StockReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -26,6 +32,7 @@ public class InventoryService {
 
     private final InventoryItemRepository inventoryItemRepository;
     private final ProcessedOrderRepository processedOrderRepository;
+    private final StockReservationRepository stockReservationRepository;
 
     /**
      * Checks that every requested product has enough available stock. Quantities requested
@@ -89,6 +96,66 @@ public class InventoryService {
         }
         processedOrderRepository.save(new ProcessedOrder(event.orderId()));
         log.info("Stock deducted for order {}", event.orderId());
+    }
+
+    /**
+     * Holds the stock of an order until its payment is known. All or nothing: when one product
+     * is short, nothing is reserved. Idempotent: an order already reserved is ignored.
+     */
+    @Transactional
+    public void reserve(Long orderId, List<StockItemRequest> items) {
+        if (stockReservationRepository.existsByOrderId(orderId)) {
+            log.info("Stock already reserved for order {}, skipping", orderId);
+            return;
+        }
+
+        // Sorted by product id so that concurrent reservations always lock rows in the same order.
+        Map<String, Integer> requested = items.stream()
+                .collect(Collectors.toMap(StockItemRequest::productId, StockItemRequest::quantity,
+                        Integer::sum, TreeMap::new));
+
+        List<String> unavailable = new ArrayList<>();
+        requested.forEach((productId, quantity) -> {
+            if (inventoryItemRepository.reserve(productId, quantity) == 0) {
+                unavailable.add(productId);
+            }
+        });
+        if (!unavailable.isEmpty()) {
+            // The exception rolls the whole transaction back, including the units already held above.
+            throw new InsufficientStockException(orderId, unavailable);
+        }
+
+        requested.forEach((productId, quantity) ->
+                stockReservationRepository.save(new StockReservation(orderId, productId, quantity)));
+        log.info("Stock reserved for order {}: {}", orderId, requested);
+    }
+
+    /**
+     * The order is confirmed: the held units leave the stock. Idempotent.
+     */
+    @Transactional
+    public void commit(Long orderId) {
+        List<StockReservation> reservations =
+                stockReservationRepository.findByOrderIdAndStatus(orderId, ReservationStatus.RESERVED);
+        for (StockReservation reservation : reservations) {
+            inventoryItemRepository.commitReserved(reservation.getProductId(), reservation.getQuantity());
+            reservation.commit();
+        }
+        log.info("Stock committed for order {} ({} line(s))", orderId, reservations.size());
+    }
+
+    /**
+     * The order is cancelled: the held units are available again. Idempotent.
+     */
+    @Transactional
+    public void release(Long orderId) {
+        List<StockReservation> reservations =
+                stockReservationRepository.findByOrderIdAndStatus(orderId, ReservationStatus.RESERVED);
+        for (StockReservation reservation : reservations) {
+            inventoryItemRepository.releaseReserved(reservation.getProductId(), reservation.getQuantity());
+            reservation.release();
+        }
+        log.info("Stock released for order {} ({} line(s))", orderId, reservations.size());
     }
 
     private static boolean isAvailable(InventoryItem item, int requestedQuantity) {
