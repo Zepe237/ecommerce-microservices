@@ -23,4 +23,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
                 "Product catalog is temporarily unavailable");
     }
+    @ExceptionHandler(DependencyUnavailableException.class)
+    public ProblemDetail handleDependencyUnavailable(DependencyUnavailableException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(HttpStatus.SERVICE_UNAVAILABLE,
+            ex.getMessage() + ", please retry later");
+        problem.setProperty("service", ex.getService());
+        return problem;
+    }
 }
