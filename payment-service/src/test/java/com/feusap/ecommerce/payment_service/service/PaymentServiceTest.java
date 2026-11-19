@@ -59,7 +59,7 @@ class PaymentServiceTest {
     @DisplayName("An accepted charge is saved as SUCCEEDED and announced")
     void acceptedCharge() {
         givenNoExistingPayment();
-        givenOrder("CONFIRMED", "99.99");
+        givenOrder("PAYMENT_PENDING", "99.99");
         givenSaveReturnsItsArgument();
         when(paymentProvider.charge(any(Payment.class), anyString())).thenReturn(PaymentResult.accepted("fake_123"));
 
@@ -80,7 +80,7 @@ class PaymentServiceTest {
     @DisplayName("A declined charge is saved as FAILED and the reason travels in the event")
     void declinedCharge() {
         givenNoExistingPayment();
-        givenOrder("CONFIRMED", "99.99");
+        givenOrder("PAYMENT_PENDING", "99.99");
         givenSaveReturnsItsArgument();
         when(paymentProvider.charge(any(Payment.class), anyString())).thenReturn(PaymentResult.declined("Card declined"));
 
@@ -134,7 +134,7 @@ class PaymentServiceTest {
     @DisplayName("A provider outage leaves the payment PENDING and announces nothing")
     void providerOutage() {
         givenNoExistingPayment();
-        givenOrder("CONFIRMED", "99.99");
+        givenOrder("PAYMENT_PENDING", "99.99");
         when(paymentRepository.saveAndFlush(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paymentProvider.charge(any(Payment.class), anyString()))
                 .thenThrow(new PaymentProviderUnavailableException("down"));
@@ -162,7 +162,7 @@ class PaymentServiceTest {
                 .failureReason("Card declined")
                 .build();
         when(paymentRepository.findByOrderId(ORDER_ID)).thenReturn(Optional.of(failed));
-        givenOrder("CONFIRMED", "99.99");
+        givenOrder("PAYMENT_PENDING", "99.99");
         when(paymentRepository.save(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(paymentProvider.charge(any(Payment.class), anyString())).thenReturn(PaymentResult.accepted("fake_456"));
 
@@ -178,7 +178,7 @@ class PaymentServiceTest {
     @DisplayName("The result is saved before the event is published")
     void savesBeforePublishing() {
         givenNoExistingPayment();
-        givenOrder("CONFIRMED", "99.99");
+        givenOrder("PAYMENT_PENDING", "99.99");
         givenSaveReturnsItsArgument();
         when(paymentProvider.charge(any(Payment.class), anyString())).thenReturn(PaymentResult.accepted("fake_123"));
 
@@ -194,7 +194,7 @@ class PaymentServiceTest {
     @DisplayName("A concurrent payment for the same order is refused with PaymentAlreadyInProgressException")
     void concurrentPaymentForSameOrder() {
         givenNoExistingPayment();
-        givenOrder("CONFIRMED", "99.99");
+        givenOrder("PAYMENT_PENDING", "99.99");
         when(paymentRepository.saveAndFlush(any(Payment.class)))
                 .thenThrow(new DataIntegrityViolationException("duplicate key value violates unique constraint"));
 
@@ -223,5 +223,16 @@ class PaymentServiceTest {
         ArgumentCaptor<PaymentCompletedEvent> captor = ArgumentCaptor.forClass(PaymentCompletedEvent.class);
         verify(paymentEventPublisher).publish(captor.capture());
         return captor.getValue();
+    }
+    @Test
+    @DisplayName("An order already CONFIRMED is refused: it has been paid already")
+    void confirmedOrderIsNotPayableAnymore() {
+        givenNoExistingPayment();
+        givenOrder("CONFIRMED", "99.99");
+
+        assertThatThrownBy(() -> paymentService.placePayment(new PaymentRequest(ORDER_ID, "card")))
+            .isInstanceOf(OrderNotPayableException.class);
+
+        verifyNoInteractions(paymentProvider, paymentEventPublisher);
     }
 }

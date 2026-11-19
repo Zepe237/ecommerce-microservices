@@ -28,6 +28,7 @@ public class PaymentService {
     private final OrderClient orderClient;
     private final PaymentEventPublisher paymentEventPublisher;
     private final PaymentProvider paymentProvider;
+    private static final String PAYABLE_STATUS = "PAYMENT_PENDING";
 
     public PaymentResponse placePayment(PaymentRequest request) {
         // 1. Idempotence : déjà payée ?
@@ -38,7 +39,7 @@ public class PaymentService {
 
         // 2. La commande fait foi pour le montant et le client
         OrderResponse order = orderClient.getOrder(request.orderId());
-        if(!"CONFIRMED".equals(order.status())){
+        if(!PAYABLE_STATUS.equals(order.status())){
             throw new OrderNotPayableException(order.id(), order.status());
         }
 
