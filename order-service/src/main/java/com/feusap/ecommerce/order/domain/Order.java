@@ -72,6 +72,16 @@ public class Order {
         }
         status = OrderStatus.CONFIRMED;
     }
+    public void markPaymentPending() {          // renomme toPay()
+        if (lines.isEmpty()) {
+            throw new IllegalStateException("An order without lines cannot be placed");
+        }
+        status = OrderStatus.PAYMENT_PENDING;
+    }
+
+    public void cancel() {
+        status = OrderStatus.CANCELLED;
+    }
 
     public List<OrderLine> getLines() {
         return Collections.unmodifiableList(lines);

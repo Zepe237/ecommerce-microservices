@@ -4,6 +4,7 @@ import com.feusap.ecommerce.order.client.CartClient;
 import com.feusap.ecommerce.order.client.InventoryClient;
 import com.feusap.ecommerce.order.client.dto.AvailabilityResponse;
 import com.feusap.ecommerce.order.client.dto.CartResponse;
+import com.feusap.ecommerce.order.client.dto.ReservationRequest;
 import com.feusap.ecommerce.order.domain.Order;
 import com.feusap.ecommerce.order.dto.OrderResponse;
 import com.feusap.ecommerce.order.exception.EmptyCartException;
@@ -13,6 +14,7 @@ import com.feusap.ecommerce.order.mapper.OrderMapper;
 import com.feusap.ecommerce.order.messaging.OrderCreatedEvent;
 import com.feusap.ecommerce.order.messaging.OrderEventPublisher;
 import com.feusap.ecommerce.order.repository.OrderRepository;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,19 +48,19 @@ public class OrderService {
         if (cart.isEmpty()) {
             throw new EmptyCartException(customerId);
         }
-
-        AvailabilityResponse availability = inventoryClient.checkAvailability(orderMapper.toStockItems(cart));
-        if (!availability.allAvailable()) {
-            throw new OutOfStockException(availability.unavailableProductIds());
+        Order order = orderMapper.fromCart(cart);
+        order.markPaymentPending();
+        Order saved = orderRepository.save(order);
+        try {
+            inventoryClient.reserve(new ReservationRequest(saved.getId(), orderMapper.toStockItems(cart)));
+        } catch (FeignException.Conflict e) {
+            saved.cancel();                          // compensation
+            orderRepository.save(saved);
+            log.warn("Order {} cancelled: insufficient stock", saved.getId());
+            throw new OutOfStockException(List.of());
         }
 
-        Order order = orderMapper.fromCart(cart);
-        order.confirm();
-        Order saved = orderRepository.save(order);
-        log.info("Order {} confirmed for customer {} ({} line(s), total {})",
-                saved.getId(), customerId, saved.getLines().size(), saved.getTotalAmount());
-
-        orderEventPublisher.publishOrderCreated(OrderCreatedEvent.from(saved));
+        log.info("Order {} awaiting payment for customer {}", saved.getId(), customerId);
         return orderMapper.toResponse(saved);
     }
 

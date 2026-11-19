@@ -1,6 +1,7 @@
 package com.feusap.ecommerce.order.client;
 
 import com.feusap.ecommerce.order.client.dto.AvailabilityResponse;
+import com.feusap.ecommerce.order.client.dto.ReservationRequest;
 import com.feusap.ecommerce.order.client.dto.StockItemRequest;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,7 @@ public class InventoryClientFallbackFactory implements FallbackFactory<Inventory
     public InventoryClient create(Throwable cause) {
         return new InventoryClient() {
             @Override
-            public AvailabilityResponse checkAvailability(List<StockItemRequest> items) {
+            public void reserve(ReservationRequest request) {
                 throw FeignFallbacks.translate(SERVICE, cause);
             }
         };
