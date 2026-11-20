@@ -7,6 +7,7 @@ import com.feusap.ecommerce.order.client.dto.CartResponse;
 import com.feusap.ecommerce.order.client.dto.ReservationRequest;
 import com.feusap.ecommerce.order.client.dto.StockItemRequest;
 import com.feusap.ecommerce.order.domain.Order;
+import com.feusap.ecommerce.order.domain.OrderLine;
 import com.feusap.ecommerce.order.domain.OrderStatus;
 import com.feusap.ecommerce.order.dto.OrderResponse;
 import com.feusap.ecommerce.order.exception.DependencyUnavailableException;
@@ -27,12 +28,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -130,6 +133,47 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.placeOrder(CUSTOMER_ID)).isInstanceOf(EmptyCartException.class);
 
         verifyNoInteractions(inventoryClient, orderRepository, orderEventPublisher);
+    }
+
+    @Test
+    @DisplayName("handlePaymentResult confirms a PAYMENT_PENDING order when the payment succeeded")
+    void handlePaymentResult_confirmsOnSuccess() {
+        Order order = givenStoredOrderAwaitingPayment();
+
+        orderService.handlePaymentResult(ORDER_ID, true);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+    }
+
+    @Test
+    @DisplayName("handlePaymentResult cancels a PAYMENT_PENDING order when the payment failed")
+    void handlePaymentResult_cancelsOnFailure() {
+        Order order = givenStoredOrderAwaitingPayment();
+
+        orderService.handlePaymentResult(ORDER_ID, false);
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+    }
+
+    @Test
+    @DisplayName("handlePaymentResult ignores a duplicate event for an order already decided")
+    void handlePaymentResult_isIdempotent() {
+        Order order = givenStoredOrderAwaitingPayment();
+        order.cancel();                                   // already decided by a first delivery
+
+        orderService.handlePaymentResult(ORDER_ID, true); // Kafka delivers the event again
+
+        assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        verify(orderRepository, never()).save(any());
+    }
+
+    private Order givenStoredOrderAwaitingPayment() {
+        Order order = Order.forCustomer(CUSTOMER_ID);
+        order.addLine(new OrderLine("PRD-0001", "iPhone 15", new BigDecimal("1000.00"), 1));
+        order.markPaymentPending();
+        ReflectionTestUtils.setField(order, "id", ORDER_ID);
+        when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        return order;
     }
 
     private void givenCartWithTwoProducts() {

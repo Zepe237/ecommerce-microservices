@@ -19,6 +19,15 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JacksonJsonSerializer
       properties:
         spring.json.add.type.headers: false
+    consumer:
+      group-id: order-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
+        spring.json.use.type.headers: false
+        spring.json.value.default.type: com.feusap.ecommerce.order.messaging.PaymentCompletedEvent
   mvc:
     problemdetails:
       enabled: true
@@ -40,6 +49,9 @@ app:
   kafka:
     topics:
       order-created: order.created
+      payment-completed: payment.completed
+      order-confirmed: order.confirmed
+      order-cancelled: order.cancelled
 resilience4j:
   circuitbreaker:
     configs:

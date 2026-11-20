@@ -19,4 +19,14 @@ public class KafkaTopicConfig {
                 .replicas(REPLICAS)
                 .build();
     }
+
+    @Bean
+    NewTopic orderConfirmedTopic(@Value("${app.kafka.topics.order-confirmed}") String topicName) {
+        return TopicBuilder.name(topicName).partitions(PARTITIONS).replicas(REPLICAS).build();
+    }
+
+    @Bean
+    NewTopic orderCancelledTopic(@Value("${app.kafka.topics.order-cancelled}") String topicName) {
+        return TopicBuilder.name(topicName).partitions(PARTITIONS).replicas(REPLICAS).build();
+    }
 }

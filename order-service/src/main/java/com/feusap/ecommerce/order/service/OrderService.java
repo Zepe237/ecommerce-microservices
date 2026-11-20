@@ -2,17 +2,18 @@ package com.feusap.ecommerce.order.service;
 
 import com.feusap.ecommerce.order.client.CartClient;
 import com.feusap.ecommerce.order.client.InventoryClient;
-import com.feusap.ecommerce.order.client.dto.AvailabilityResponse;
 import com.feusap.ecommerce.order.client.dto.CartResponse;
 import com.feusap.ecommerce.order.client.dto.ReservationRequest;
 import com.feusap.ecommerce.order.domain.Order;
+import com.feusap.ecommerce.order.domain.OrderStatus;
 import com.feusap.ecommerce.order.dto.OrderResponse;
 import com.feusap.ecommerce.order.exception.EmptyCartException;
 import com.feusap.ecommerce.order.exception.OrderNotFoundException;
 import com.feusap.ecommerce.order.exception.OutOfStockException;
 import com.feusap.ecommerce.order.mapper.OrderMapper;
-import com.feusap.ecommerce.order.messaging.OrderCreatedEvent;
 import com.feusap.ecommerce.order.messaging.OrderEventPublisher;
+import com.feusap.ecommerce.order.messaging.OrderStatusChangedEvent;
+import com.feusap.ecommerce.order.messaging.PaymentCompletedEvent;
 import com.feusap.ecommerce.order.repository.OrderRepository;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -76,5 +77,24 @@ public class OrderService {
         return orderRepository.findByCustomerIdOrderByCreatedAtDesc(customerId).stream()
                 .map(orderMapper::toResponse)
                 .toList();
+    }
+    @Transactional
+    public void handlePaymentResult(Long orderId, boolean paid) {
+        Order order = orderRepository.findById(orderId)
+            .orElseThrow(() -> new OrderNotFoundException(orderId));
+
+        // Idempotence : Kafka peut livrer deux fois le même message
+        if (order.getStatus() != OrderStatus.PAYMENT_PENDING) {
+            log.info("Order {} already {}, payment result ignored", orderId, order.getStatus());
+            return;
+        }
+
+        if (paid) {
+            order.confirm();
+        } else {
+            order.cancel();
+        }
+        orderEventPublisher.publishStatusChangedAfterCommit(OrderStatusChangedEvent.from(order));
+        log.info("Order {} is now {}", orderId, order.getStatus());
     }
 }
