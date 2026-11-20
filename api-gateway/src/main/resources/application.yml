@@ -40,6 +40,10 @@ spring:
               uri: ${NOTIFICATION_SERVICE_URL:http://127.0.0.1:8086}
               predicates:
                 - Path=/api/notifications/**
+            - id: payment-service
+              uri: ${PAYMENT_SERVICE_URL:http://127.0.0.1:8087}
+              predicates:
+                - Path=/api/payments/**
 
 app:
   cors:

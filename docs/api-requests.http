@@ -30,11 +30,11 @@ GET http://localhost:8080/api/customers
 Authorization: Bearer {{adminToken}}
 
 ### 0g. Internal endpoint, blocked at the gateway even for ADMIN -> 403
-POST http://localhost:8080/api/inventory/availability
+POST http://localhost:8080/api/inventory/reservations
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-[{"productId": "PRD-0001", "quantity": 1}]
+{"orderId": 999, "items": [{"productId": "PRD-0001", "quantity": 1}]}
 
 ### End-to-end scenario, runnable from the IntelliJ HTTP client.
 ### Prerequisites: docker compose up -d, then the six services started with the "dev" profile (default).
