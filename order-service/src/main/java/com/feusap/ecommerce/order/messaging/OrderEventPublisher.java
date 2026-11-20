@@ -12,16 +12,13 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class OrderEventPublisher {
 
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final String orderCreatedTopic;
     private final String orderConfirmedTopic;
     private final String orderCancelledTopic;
 
     public OrderEventPublisher(KafkaTemplate<String, Object> kafkaTemplate,
-                               @Value("${app.kafka.topics.order-created}") String orderCreatedTopic,
                                @Value("${app.kafka.topics.order-confirmed}") String orderConfirmedTopic,
                                @Value("${app.kafka.topics.order-cancelled}") String orderCancelledTopic) {
         this.kafkaTemplate = kafkaTemplate;
-        this.orderCreatedTopic = orderCreatedTopic;
         this.orderConfirmedTopic = orderConfirmedTopic;
         this.orderCancelledTopic = orderCancelledTopic;
     }

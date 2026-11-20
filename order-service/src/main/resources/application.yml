@@ -48,7 +48,6 @@ app:
       url: ${INVENTORY_SERVICE_URL:http://127.0.0.1:8084}
   kafka:
     topics:
-      order-created: order.created
       payment-completed: payment.completed
       order-confirmed: order.confirmed
       order-cancelled: order.cancelled

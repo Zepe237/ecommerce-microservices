@@ -18,7 +18,7 @@ spring:
       properties:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
         spring.json.use.type.headers: false
-        spring.json.value.default.type: com.feusap.ecommerce.cart.messaging.OrderCreatedEvent
+        spring.json.value.default.type: com.feusap.ecommerce.cart.messaging.OrderStatusChangedEvent
   mvc:
     problemdetails:
       enabled: true
@@ -37,7 +37,7 @@ app:
       url: ${PRODUCT_SERVICE_URL:http://127.0.0.1:8083}
   kafka:
     topics:
-      order-created: order.created
+      order-confirmed: order.confirmed
 
 
 resilience4j:

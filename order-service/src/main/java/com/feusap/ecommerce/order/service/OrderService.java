@@ -35,14 +35,15 @@ public class OrderService {
     private final OrderEventPublisher orderEventPublisher;
 
     /**
-     * Places an order from the customer's current cart.
+     * Places an order from the customer's current cart and starts the payment saga.
      * <ol>
      *     <li>loads the cart from the cart service,</li>
-     *     <li>checks stock availability with the inventory service,</li>
-     *     <li>persists the confirmed order,</li>
-     *     <li>publishes order.created for the inventory, cart and notification services.</li>
+     *     <li>persists the order as PAYMENT_PENDING (this gives it an id),</li>
+     *     <li>reserves its stock with the inventory service, all or nothing,</li>
+     *     <li>on insufficient stock, cancels the order (compensation) and throws OutOfStockException.</li>
      * </ol>
-     * The method is intentionally not transactional: the event must only leave once the order is committed.
+     * The order is confirmed or cancelled later, when payment.completed arrives (see handlePaymentResult).
+     * The method is intentionally not transactional: the order must be committed before calling the inventory.
      */
     public OrderResponse placeOrder(Long customerId) {
         CartResponse cart = cartClient.getCart(customerId);

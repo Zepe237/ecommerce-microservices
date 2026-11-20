@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -36,7 +37,7 @@ class OrderEventPublisherTest {
 
     @BeforeEach
     void setUp() {
-        publisher = new OrderEventPublisher(kafkaTemplate, "order.created", "order.confirmed", "order.cancelled");
+        publisher = new OrderEventPublisher(kafkaTemplate,  "order.confirmed", "order.cancelled");
         TransactionSynchronizationManager.initSynchronization();
     }
 
@@ -82,7 +83,8 @@ class OrderEventPublisherTest {
     }
 
     private static OrderStatusChangedEvent event(String status) {
-        return new OrderStatusChangedEvent(42L, 1L, status, new BigDecimal("99.99"), Instant.now());
+        return new OrderStatusChangedEvent(42L, 1L, status, new BigDecimal("99.99"), Instant.now(),
+            List.of(new OrderStatusChangedEvent.OrderedItem("PRD-0001", "iPhone 15", 1)));
     }
 
     private static void commit() {

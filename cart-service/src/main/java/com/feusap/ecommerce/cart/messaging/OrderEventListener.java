@@ -13,9 +13,9 @@ public class OrderEventListener {
 
     private final CartService cartService;
 
-    @KafkaListener(topics = "${app.kafka.topics.order-created}")
-    public void onOrderCreated(OrderCreatedEvent event) {
-        log.info("Order {} placed, emptying the cart of customer {}", event.orderId(), event.customerId());
+    @KafkaListener(topics = "${app.kafka.topics.order-confirmed}")
+    public void onOrderConfirmed(OrderStatusChangedEvent event) {
+        log.info("Order {} confirmed, emptying the cart of customer {}", event.orderId(), event.customerId());
         cartService.clear(event.customerId());
     }
 }

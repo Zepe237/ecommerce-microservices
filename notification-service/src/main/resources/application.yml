@@ -19,7 +19,7 @@ spring:
       properties:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
         spring.json.use.type.headers: false
-        spring.json.value.default.type: com.feusap.ecommerce.notification.messaging.OrderCreatedEvent
+        spring.json.value.default.type: com.feusap.ecommerce.notification.messaging.OrderStatusChangedEvent
   mail:
     host: ${MAIL_HOST:127.0.0.1}
     port: ${MAIL_PORT:1025}
@@ -40,7 +40,7 @@ app:
       url: ${CUSTOMER_SERVICE_URL:http://127.0.0.1:8085}
   kafka:
     topics:
-      order-created: order.created
+      order-confirmed: order.confirmed
 
 resilience4j:
   circuitbreaker:
