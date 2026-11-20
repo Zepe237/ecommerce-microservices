@@ -4,7 +4,7 @@ import com.feusap.ecommerce.notification.client.CustomerClient;
 import com.feusap.ecommerce.notification.client.dto.CustomerResponse;
 import com.feusap.ecommerce.notification.config.MailProperties;
 import com.feusap.ecommerce.notification.domain.Notification;
-import com.feusap.ecommerce.notification.messaging.OrderCreatedEvent;
+import com.feusap.ecommerce.notification.messaging.OrderStatusChangedEvent;
 import com.feusap.ecommerce.notification.repository.NotificationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -29,9 +29,9 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceTest {
 
-    private static final OrderCreatedEvent EVENT = new OrderCreatedEvent(
+    private static final OrderStatusChangedEvent EVENT = new OrderStatusChangedEvent(
             42L, 1L, new BigDecimal("2300.00"), Instant.now(),
-            List.of(new OrderCreatedEvent.OrderedItem("PRD-0001", "iPhone 15", 2)));
+            List.of(new OrderStatusChangedEvent.OrderedItem("PRD-0001", "iPhone 15", 2)));
 
     @Mock
     private CustomerClient customerClient;

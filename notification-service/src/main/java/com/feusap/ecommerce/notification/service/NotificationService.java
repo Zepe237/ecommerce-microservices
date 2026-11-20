@@ -5,7 +5,7 @@ import com.feusap.ecommerce.notification.client.dto.CustomerResponse;
 import com.feusap.ecommerce.notification.config.MailProperties;
 import com.feusap.ecommerce.notification.domain.Notification;
 import com.feusap.ecommerce.notification.dto.NotificationResponse;
-import com.feusap.ecommerce.notification.messaging.OrderCreatedEvent;
+import com.feusap.ecommerce.notification.messaging.OrderStatusChangedEvent;
 import com.feusap.ecommerce.notification.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +31,7 @@ public class NotificationService {
      * so an order that already has a notification is skipped. Any failure propagates to the
      * Kafka error handler, which retries the record.
      */
-    public void sendOrderConfirmation(OrderCreatedEvent event) {
+    public void sendOrderConfirmation(OrderStatusChangedEvent event) {
         if (notificationRepository.existsByOrderId(event.orderId())) {
             log.info("Confirmation already sent for order {}, skipping", event.orderId());
             return;

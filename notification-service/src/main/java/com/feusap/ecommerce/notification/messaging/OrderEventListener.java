@@ -13,9 +13,9 @@ public class OrderEventListener {
 
     private final NotificationService notificationService;
 
-    @KafkaListener(topics = "${app.kafka.topics.order-created}")
-    public void onOrderCreated(OrderCreatedEvent event) {
-        log.info("Received order.created for order {} of customer {}", event.orderId(), event.customerId());
+    @KafkaListener(topics = "${app.kafka.topics.order-confirmed}")
+    public void onOrderConfirmed(OrderStatusChangedEvent event) {
+        log.info("Received order.confirmed for order {} of customer {}", event.orderId(), event.customerId());
         notificationService.sendOrderConfirmation(event);
     }
 }

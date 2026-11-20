@@ -1,6 +1,6 @@
 package com.feusap.ecommerce.notification.service;
 
-import com.feusap.ecommerce.notification.messaging.OrderCreatedEvent;
+import com.feusap.ecommerce.notification.messaging.OrderStatusChangedEvent;
 import org.springframework.stereotype.Component;
 
 import java.util.stream.Collectors;
@@ -11,11 +11,11 @@ import java.util.stream.Collectors;
 @Component
 public class OrderConfirmationTemplate {
 
-    public String subject(OrderCreatedEvent event) {
+    public String subject(OrderStatusChangedEvent event) {
         return "Confirmation de votre commande n° " + event.orderId();
     }
 
-    public String body(String customerName, OrderCreatedEvent event) {
+    public String body(String customerName, OrderStatusChangedEvent event) {
         String lines = event.items().stream()
                 .map(item -> "  - %s x %d".formatted(item.productName(), item.quantity()))
                 .collect(Collectors.joining("\n"));

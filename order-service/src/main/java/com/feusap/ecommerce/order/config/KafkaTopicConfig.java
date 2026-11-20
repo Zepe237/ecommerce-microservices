@@ -13,10 +13,12 @@ public class KafkaTopicConfig {
     private static final int REPLICAS = 1;
 
     @Bean
-    NewTopic orderCreatedTopic(@Value("${app.kafka.topics.order-created}") String topicName) {
-        return TopicBuilder.name(topicName)
-                .partitions(PARTITIONS)
-                .replicas(REPLICAS)
-                .build();
+    NewTopic orderConfirmedTopic(@Value("${app.kafka.topics.order-confirmed}") String topicName) {
+        return TopicBuilder.name(topicName).partitions(PARTITIONS).replicas(REPLICAS).build();
+    }
+
+    @Bean
+    NewTopic orderCancelledTopic(@Value("${app.kafka.topics.order-cancelled}") String topicName) {
+        return TopicBuilder.name(topicName).partitions(PARTITIONS).replicas(REPLICAS).build();
     }
 }

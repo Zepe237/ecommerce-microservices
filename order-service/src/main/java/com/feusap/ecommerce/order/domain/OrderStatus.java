@@ -1,9 +1,10 @@
 package com.feusap.ecommerce.order.domain;
 
 public enum OrderStatus {
-    PENDING,
+    PAYMENT_PENDING,
     CONFIRMED,
     SHIPPED,
     DELIVERED,
-    CANCELLED
+    CANCELLED,
+    PENDING
 }

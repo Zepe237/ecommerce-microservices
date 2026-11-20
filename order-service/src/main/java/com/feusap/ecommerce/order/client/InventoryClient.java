@@ -1,12 +1,9 @@
 package com.feusap.ecommerce.order.client;
 
-import com.feusap.ecommerce.order.client.dto.AvailabilityResponse;
-import com.feusap.ecommerce.order.client.dto.StockItemRequest;
+import com.feusap.ecommerce.order.client.dto.ReservationRequest;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import java.util.List;
 
 @FeignClient(
     name = "inventory-service",
@@ -15,6 +12,6 @@ import java.util.List;
 )
 public interface InventoryClient {
 
-    @PostMapping("/api/inventory/availability")
-    AvailabilityResponse checkAvailability(@RequestBody List<StockItemRequest> items);
+    @PostMapping("/api/inventory/reservations")
+    void reserve(@RequestBody ReservationRequest request);
 }
