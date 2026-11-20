@@ -21,6 +21,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
 
 @Slf4j
@@ -97,5 +98,18 @@ public class OrderService {
         }
         orderEventPublisher.publishStatusChangedAfterCommit(OrderStatusChangedEvent.from(order));
         log.info("Order {} is now {}", orderId, order.getStatus());
+    }
+    /**
+     * Cancels the orders still awaiting payment before the cutoff, so that their reserved stock is released.
+     */
+    @Transactional
+    public int expireUnpaidOrders(Instant cutoff) {
+        List<Order> expired = orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PAYMENT_PENDING, cutoff);
+        for (Order order : expired) {
+            order.cancel();
+            orderEventPublisher.publishStatusChangedAfterCommit(OrderStatusChangedEvent.from(order));
+            log.info("Order {} expired: no payment received in time", order.getId());
+        }
+        return expired.size();
     }
 }

@@ -15,6 +15,7 @@ import com.feusap.ecommerce.order.exception.EmptyCartException;
 import com.feusap.ecommerce.order.exception.OutOfStockException;
 import com.feusap.ecommerce.order.mapper.OrderMapper;
 import com.feusap.ecommerce.order.messaging.OrderEventPublisher;
+import com.feusap.ecommerce.order.messaging.OrderStatusChangedEvent;
 import com.feusap.ecommerce.order.repository.OrderRepository;
 import feign.FeignException;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,12 +28,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -143,6 +146,7 @@ class OrderServiceTest {
         orderService.handlePaymentResult(ORDER_ID, true);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CONFIRMED);
+        assertThat(publishedEvent().status()).isEqualTo("CONFIRMED");
     }
 
     @Test
@@ -153,6 +157,7 @@ class OrderServiceTest {
         orderService.handlePaymentResult(ORDER_ID, false);
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(publishedEvent().status()).isEqualTo("CANCELLED");
     }
 
     @Test
@@ -165,6 +170,16 @@ class OrderServiceTest {
 
         assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
         verify(orderRepository, never()).save(any());
+        verifyNoInteractions(orderEventPublisher);           // no second announcement
+    }
+
+    private OrderStatusChangedEvent publishedEvent() {
+        ArgumentCaptor<OrderStatusChangedEvent> event = ArgumentCaptor.forClass(OrderStatusChangedEvent.class);
+        verify(orderEventPublisher).publishStatusChangedAfterCommit(event.capture());
+        assertThat(event.getValue().orderId()).isEqualTo(ORDER_ID);
+        assertThat(event.getValue().customerId()).isEqualTo(CUSTOMER_ID);
+        assertThat(event.getValue().items()).hasSize(1);
+        return event.getValue();
     }
 
     private Order givenStoredOrderAwaitingPayment() {
@@ -173,6 +188,39 @@ class OrderServiceTest {
         order.markPaymentPending();
         ReflectionTestUtils.setField(order, "id", ORDER_ID);
         when(orderRepository.findById(ORDER_ID)).thenReturn(Optional.of(order));
+        return order;
+    }
+
+    @Test
+    @DisplayName("expireUnpaidOrders cancels every order still awaiting payment and announces it")
+    void expireUnpaidOrders_cancelsAndAnnounces() {
+        Instant cutoff = Instant.now();
+        Order stale = orderAwaitingPayment();
+        when(orderRepository.findByStatusAndCreatedAtBefore(OrderStatus.PAYMENT_PENDING, cutoff))
+                .thenReturn(List.of(stale));
+
+        int expired = orderService.expireUnpaidOrders(cutoff);
+
+        assertThat(expired).isEqualTo(1);
+        assertThat(stale.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        assertThat(publishedEvent().status()).isEqualTo("CANCELLED");   // the inventory will release the stock
+    }
+
+    @Test
+    @DisplayName("expireUnpaidOrders does nothing when no order is overdue")
+    void expireUnpaidOrders_nothingToDo() {
+        when(orderRepository.findByStatusAndCreatedAtBefore(eq(OrderStatus.PAYMENT_PENDING), any()))
+                .thenReturn(List.of());
+
+        assertThat(orderService.expireUnpaidOrders(Instant.now())).isZero();
+        verifyNoInteractions(orderEventPublisher);
+    }
+
+    private Order orderAwaitingPayment() {
+        Order order = Order.forCustomer(CUSTOMER_ID);
+        order.addLine(new OrderLine("PRD-0001", "iPhone 15", new BigDecimal("1000.00"), 1));
+        order.markPaymentPending();
+        ReflectionTestUtils.setField(order, "id", ORDER_ID);
         return order;
     }
 
