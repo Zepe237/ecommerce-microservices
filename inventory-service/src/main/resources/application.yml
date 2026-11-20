@@ -24,12 +24,12 @@ spring:
       properties:
         spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JacksonJsonDeserializer
         spring.json.use.type.headers: false
-        spring.json.value.default.type: com.feusap.ecommerce.inventory.messaging.OrderCreatedEvent
+        spring.json.value.default.type: com.feusap.ecommerce.inventory.messaging.OrderStatusChangedEvent
   mvc:
     problemdetails:
       enabled: true
-
 app:
   kafka:
     topics:
-      order-created: order.created
+      order-confirmed: order.confirmed
+      order-cancelled: order.cancelled

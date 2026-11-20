@@ -1,12 +1,8 @@
 package com.feusap.ecommerce.order.client;
 
-import com.feusap.ecommerce.order.client.dto.AvailabilityResponse;
 import com.feusap.ecommerce.order.client.dto.ReservationRequest;
-import com.feusap.ecommerce.order.client.dto.StockItemRequest;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
-
-import java.util.List;
 
 /**
  * Invoked by the circuit breaker when a call to inventory-service fails or when the circuit is open.

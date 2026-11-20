@@ -1,15 +1,12 @@
 package com.feusap.ecommerce.inventory.controller;
 
-import com.feusap.ecommerce.inventory.dto.AvailabilityResponse;
 import com.feusap.ecommerce.inventory.dto.ReservationRequest;
-import com.feusap.ecommerce.inventory.dto.StockItemRequest;
 import com.feusap.ecommerce.inventory.dto.StockLevelResponse;
 import com.feusap.ecommerce.inventory.dto.StockUpdateRequest;
 import com.feusap.ecommerce.inventory.service.InventoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,8 +18,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
 @RestController
 @RequestMapping("/api/inventory")
 @RequiredArgsConstructor
@@ -31,12 +26,7 @@ public class InventoryController {
 
     private final InventoryService inventoryService;
 
-    @PostMapping("/availability")
-    @Operation(summary = "Check the availability of a list of products",
-            description = "Called by the order service before an order is placed.")
-    public AvailabilityResponse checkAvailability(@RequestBody @NotEmpty List<@Valid StockItemRequest> items) {
-        return inventoryService.checkAvailability(items);
-    }
+
 
     @PostMapping("/reservations")
     @ResponseStatus(HttpStatus.CREATED)

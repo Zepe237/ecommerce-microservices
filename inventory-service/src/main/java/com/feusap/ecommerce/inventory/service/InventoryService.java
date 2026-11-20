@@ -1,17 +1,13 @@
 package com.feusap.ecommerce.inventory.service;
 
 import com.feusap.ecommerce.inventory.domain.InventoryItem;
-import com.feusap.ecommerce.inventory.domain.ProcessedOrder;
 import com.feusap.ecommerce.inventory.domain.ReservationStatus;
 import com.feusap.ecommerce.inventory.domain.StockReservation;
-import com.feusap.ecommerce.inventory.dto.AvailabilityResponse;
 import com.feusap.ecommerce.inventory.dto.StockItemRequest;
 import com.feusap.ecommerce.inventory.dto.StockLevelResponse;
 import com.feusap.ecommerce.inventory.exception.InsufficientStockException;
 import com.feusap.ecommerce.inventory.exception.InventoryItemNotFoundException;
-import com.feusap.ecommerce.inventory.messaging.OrderCreatedEvent;
 import com.feusap.ecommerce.inventory.repository.InventoryItemRepository;
-import com.feusap.ecommerce.inventory.repository.ProcessedOrderRepository;
 import com.feusap.ecommerce.inventory.repository.StockReservationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,7 +18,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -31,32 +26,8 @@ import java.util.stream.Collectors;
 public class InventoryService {
 
     private final InventoryItemRepository inventoryItemRepository;
-    private final ProcessedOrderRepository processedOrderRepository;
     private final StockReservationRepository stockReservationRepository;
 
-    /**
-     * Checks that every requested product has enough available stock. Quantities requested
-     * several times for the same product are summed before the check.
-     */
-    @Transactional(readOnly = true)
-    public AvailabilityResponse checkAvailability(List<StockItemRequest> items) {
-        Map<String, Integer> requested = items.stream()
-                .collect(Collectors.toMap(StockItemRequest::productId, StockItemRequest::quantity, Integer::sum));
-
-        Map<String, InventoryItem> stock = inventoryItemRepository.findAllById(requested.keySet()).stream()
-                .collect(Collectors.toMap(InventoryItem::getProductId, Function.identity()));
-
-        List<String> unavailable = requested.entrySet().stream()
-                .filter(entry -> !isAvailable(stock.get(entry.getKey()), entry.getValue()))
-                .map(Map.Entry::getKey)
-                .sorted()
-                .toList();
-
-        if (!unavailable.isEmpty()) {
-            log.info("Insufficient stock for products {}", unavailable);
-        }
-        return new AvailabilityResponse(unavailable.isEmpty(), unavailable);
-    }
 
     @Transactional(readOnly = true)
     public StockLevelResponse getStockLevel(String productId) {
@@ -78,25 +49,7 @@ public class InventoryService {
         return StockLevelResponse.from(saved);
     }
 
-    /**
-     * Deducts the stock of a confirmed order. Idempotent: an order already processed is ignored.
-     */
-    @Transactional
-    public void deductStockForOrder(OrderCreatedEvent event) {
-        if (processedOrderRepository.existsById(event.orderId())) {
-            log.info("Order {} already processed, skipping", event.orderId());
-            return;
-        }
-        for (OrderCreatedEvent.OrderedItem item : event.items()) {
-            int updated = inventoryItemRepository.deduct(item.productId(), item.quantity());
-            if (updated == 0) {
-                log.warn("Could not deduct {} unit(s) of product {} for order {}: insufficient stock",
-                        item.quantity(), item.productId(), event.orderId());
-            }
-        }
-        processedOrderRepository.save(new ProcessedOrder(event.orderId()));
-        log.info("Stock deducted for order {}", event.orderId());
-    }
+
 
     /**
      * Holds the stock of an order until its payment is known. All or nothing: when one product

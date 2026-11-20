@@ -13,9 +13,15 @@ public class OrderEventListener {
 
     private final InventoryService inventoryService;
 
-    @KafkaListener(topics = "${app.kafka.topics.order-created}")
-    public void onOrderCreated(OrderCreatedEvent event) {
-        log.info("Received order.created for order {}", event.orderId());
-        inventoryService.deductStockForOrder(event);
+    @KafkaListener(topics = "${app.kafka.topics.order-confirmed}")
+    public void onOrderConfirmed(OrderStatusChangedEvent event) {
+        log.info("Received order.confirmed for order {}", event.orderId());
+        inventoryService.commit(event.orderId());
+    }
+
+    @KafkaListener(topics = "${app.kafka.topics.order-cancelled}")
+    public void onOrderCancelled(OrderStatusChangedEvent event) {
+        log.info("Received order.cancelled for order {}", event.orderId());
+        inventoryService.release(event.orderId());
     }
 }
