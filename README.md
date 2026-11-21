@@ -1,5 +1,7 @@
 # E-commerce Platform
 
+[![CI](https://github.com/Zepe237/ecommerce-microservices/actions/workflows/ci.yml/badge.svg)](https://github.com/Zepe237/ecommerce-microservices/actions/workflows/ci.yml)
+
 Backend e-commerce découpé en six microservices Spring Boot. Les services échangent de façon synchrone par HTTP (OpenFeign) quand une réponse immédiate est nécessaire, et de façon asynchrone par Apache Kafka pour tout ce qui peut se faire après la validation d'une commande.
 
 Le projet sert de terrain d'application aux problématiques concrètes d'une architecture distribuée : une base de données par service, la cohérence entre services, l'idempotence des consommateurs Kafka et la gestion des pannes d'un service dépendant.
