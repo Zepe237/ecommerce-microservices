@@ -11,6 +11,9 @@ spring:
           # Spring reads <issuer>/.well-known/openid-configuration to find the public keys (jwks_uri),
           # then checks the signature, the expiry and that the "iss" claim equals this value.
           issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8180/realms/ecommerce}
+          # Where to download the signing keys. Locally it is the same server as the issuer;
+          # in Kubernetes, Keycloak is reached by another address while the "iss" claim stays localhost.
+          jwk-set-uri: ${KEYCLOAK_JWK_SET_URI:http://localhost:8180/realms/ecommerce/protocol/openid-connect/certs}
   cloud:
     gateway:
       server:
