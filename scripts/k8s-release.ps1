@@ -16,7 +16,7 @@ $services = "api-gateway","order-service","cart-service","product-service",
 Write-Host "Deploying version '$Tag' from ghcr.io" -ForegroundColor Cyan
 
 # Render the release overlay, pin every image to the requested tag, and apply the result.
-kubectl kustomize k8s/release |
+kubectl kustomize k8s/overlays/release |
     ForEach-Object { $_ -replace '(ghcr\.io/zepe237/ecommerce-[a-z-]+):latest', "`$1:$Tag" } |
     kubectl apply -f -
 if ($LASTEXITCODE -ne 0) { throw "kubectl apply failed" }

@@ -1,9 +1,9 @@
-# Release overlay: the same manifests as k8s/ (the base), but with the images published on GitHub Container Registry
+# Release overlay: the same manifests as k8s/base, but with the images published on GitHub Container Registry
 # instead of the images built locally. Deploy with ./scripts/k8s-release.ps1 -Tag sha-xxxxxxx
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
-  - ..
+  - ../../base
 images:
   - name: ecommerce/api-gateway
     newName: ghcr.io/zepe237/ecommerce-api-gateway
