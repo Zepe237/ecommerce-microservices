@@ -1,0 +1,27 @@
+# Non-secret settings shared by every service, injected as environment variables.
+# The stateful infrastructure (databases, Kafka, Keycloak, Mailpit) stays in Docker Compose on the host,
+# like managed services in a cloud: the cluster only runs the stateless applications.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ecommerce-config
+data:
+  DB_HOST: host.docker.internal
+  MONGO_HOST: host.docker.internal
+  REDIS_HOST: host.docker.internal
+  MAIL_HOST: host.docker.internal
+  KAFKA_BOOTSTRAP_SERVERS: host.docker.internal:29092
+  # Inside the cluster, a Service name is a DNS name.
+  PRODUCT_SERVICE_URL: http://product-service:8083
+  CART_SERVICE_URL: http://cart-service:8082
+  ORDER_SERVICE_URL: http://order-service:8081
+  INVENTORY_SERVICE_URL: http://inventory-service:8084
+  CUSTOMER_SERVICE_URL: http://customer-service:8085
+  NOTIFICATION_SERVICE_URL: http://notification-service:8086
+  PAYMENT_SERVICE_URL: http://payment-service:8087
+  # The "iss" claim of the tokens is always localhost:8180 (KC_HOSTNAME); the keys are fetched from the host.
+  KEYCLOAK_ISSUER_URI: http://localhost:8180/realms/ecommerce
+  KEYCLOAK_JWK_SET_URI: http://host.docker.internal:8180/realms/ecommerce/protocol/openid-connect/certs
+  # Read by every JVM at startup. Serial GC: less memory and CPU for small containers.
+  # TieredStopAtLevel=1: faster startup, slightly lower peak performance (fine for a local cluster).
+  JAVA_TOOL_OPTIONS: "-XX:+UseSerialGC -XX:TieredStopAtLevel=1"

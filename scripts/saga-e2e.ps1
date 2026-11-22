@@ -33,7 +33,14 @@ function Invoke-Api([string] $Method, [string] $Path, $Body = $null) {
         $params.Body = ($Body | ConvertTo-Json -Compress)
         $params.ContentType = "application/json"
     }
-    Invoke-RestMethod @params
+    try {
+        Invoke-RestMethod @params
+    } catch {
+        # Show which call failed and the ProblemDetail body, instead of a bare status code.
+        Write-Host "  $Method $Path failed: $($_.Exception.Message)" -ForegroundColor Red
+        if ($_.ErrorDetails.Message) { Write-Host "  $($_.ErrorDetails.Message)" -ForegroundColor Red }
+        throw
+    }
 }
 
 function Get-Stock    { Invoke-Api GET "/api/inventory/$ProductId" }
