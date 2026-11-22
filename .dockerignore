@@ -1,0 +1,3 @@
+# Only the built jars are sent to Docker: faster builds, and no source or secret in the image context.
+*
+!*/target/*.jar

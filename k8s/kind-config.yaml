@@ -1,0 +1,11 @@
+# Local cluster: one node. Port 30080 of the node (the gateway NodePort) is published as 8080 on the host,
+# so http://localhost:8080 reaches the gateway exactly as before.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: ecommerce
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 8080
+        protocol: TCP
