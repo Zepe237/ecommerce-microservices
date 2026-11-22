@@ -37,6 +37,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Error page: lets the real status (502, 503...) reach the client.
                         .requestMatchers("/error").permitAll()
+                        // Kubernetes probes call these without a token.
+                        .requestMatchers("/actuator/health/**").permitAll()
                         // Service-to-service endpoint (called by the order service during the saga),
                         // only reachable on the internal network: a client could otherwise lock stock.
                         .requestMatchers("/api/inventory/reservations/**").denyAll()
