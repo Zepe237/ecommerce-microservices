@@ -40,9 +40,9 @@ if (-not $SkipBuild) {
     kind load docker-image --name $cluster ($services | ForEach-Object { "ecommerce/${_}:local" }); Check "kind load"
 }
 
-# 4. Deploy (kustomize is built into kubectl: -k reads k8s/kustomization.yaml)
+# 4. Deploy (kustomize is built into kubectl: -k reads k8s/base/kustomization.yaml)
 Step "Applying the manifests"
-kubectl apply -k k8s; Check "kubectl apply"
+kubectl apply -k k8s/base; Check "kubectl apply"
 # Same tag 'local' after a rebuild: force the pods to restart on the new image.
 kubectl -n ecommerce rollout restart deployment | Out-Null
 
