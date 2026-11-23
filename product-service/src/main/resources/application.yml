@@ -15,7 +15,12 @@ spring:
   mvc:
     problemdetails:
       enabled: true
-
+  ai:
+    mcp:
+      server:
+        name: product-catalog
+        version: 1.0.0
+        protocol: STREAMABLE
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
