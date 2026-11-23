@@ -17,10 +17,6 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProductTools {
     private final ProductService productService;
-    @Bean
-    ToolCallbackProvider productToolCallbacks(ProductTools productTools) {
-        return MethodToolCallbackProvider.builder().toolObjects(productTools).build();
-    }
 
     @Tool(description = """
         Get the details of one product of the catalog from its identifier: \
